@@ -1,0 +1,178 @@
+<!DOCTYPE html>
+<html>
+
+<head>
+  <meta charset="utf-8">
+  <meta name="description" content="Manipulation with ReachBot">
+  <meta name="keywords" content="ReachBot, Robotics, Manipulation, Parallel, Reconfigurable">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>Task-Driven Manipulation with Reconfigurable Parallel Robots</title>
+
+  <link href="https://fonts.googleapis.com/css?family=Google+Sans|Noto+Sans|Castoro" rel="stylesheet">
+
+  <link rel="stylesheet" href="./static/css/bulma.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-carousel.min.css">
+  <link rel="stylesheet" href="./static/css/bulma-slider.min.css">
+  <link rel="stylesheet" href="./static/css/fontawesome.all.min.css">
+  <link rel="stylesheet" href="https://cdn.jsdelivr.net/gh/jpswalsh/academicons@1/css/academicons.min.css">
+  <link rel="stylesheet" href="./static/css/index.css">
+  <link rel="icon" href="./static/images/favicon.svg">
+
+  <script src="https://ajax.googleapis.com/ajax/libs/jquery/3.5.1/jquery.min.js"></script>
+  <script defer src="./static/js/fontawesome.all.min.js"></script>
+  <script src="./static/js/bulma-carousel.min.js"></script>
+  <script src="./static/js/bulma-slider.min.js"></script>
+  <script src="./static/js/index.js"></script>
+</head>
+
+<body>
+
+  <nav class="navbar" role="navigation" aria-label="main navigation">
+    <div class="navbar-brand">
+      <a role="button" class="navbar-burger" aria-label="menu" aria-expanded="false">
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+        <span aria-hidden="true"></span>
+      </a>
+    </div>
+    <div class="navbar-menu">
+      <div class="navbar-start" style="flex-grow: 1; justify-content: center;">
+        <a class="navbar-item" href="https://danielpmorton.github.io/">
+        <span class="icon">
+            <svg class="svg-inline--fa fa-home fa-w-18" aria-hidden="true" focusable="false" data-prefix="fas" data-icon="home" role="img" xmlns="http://www.w3.org/2000/svg" viewBox="0 0 576 512" data-fa-i2svg=""><path fill="currentColor" d="M280.37 148.26L96 300.11V464a16 16 0 0 0 16 16l112.06-.29a16 16 0 0 0 15.92-16V368a16 16 0 0 1 16-16h64a16 16 0 0 1 16 16v95.64a16 16 0 0 0 16 16.05L464 480a16 16 0 0 0 16-16V300L295.67 148.26a12.19 12.19 0 0 0-15.3 0zM571.6 251.47L488 182.56V44.05a12 12 0 0 0-12-12h-56a12 12 0 0 0-12 12v72.61L318.47 43a48 48 0 0 0-61 0L4.34 251.47a12 12 0 0 0-1.6 16.9l25.5 31A12 12 0 0 0 45.15 301l235.22-193.74a12.19 12.19 0 0 1 15.3 0L530.9 301a12 12 0 0 0 16.9-1.6l25.5-31a12 12 0 0 0-1.7-16.93z"></path></svg><!-- <i class="fas fa-home"></i> Font Awesome fontawesome.com -->
+        </span>
+        </a>
+  
+        <div class="navbar-item has-dropdown is-hoverable">
+          <a class="navbar-link">
+            More Work
+          </a>
+          <div class="navbar-dropdown">
+            <a class="navbar-item" href="https://danielpmorton.github.io/drone_fencing/">
+              Drone Fencing
+            </a>
+            <a class="navbar-item" href="https://stanfordasl.github.io/reachbot_manipulation/">
+              Manipulation with ReachBot
+            </a>
+          </div>
+        </div>
+      </div>
+  
+    </div>
+  </nav>
+
+  <section class="hero">
+    <div class="hero-body">
+      <div class="container is-max-desktop">
+        <div class="columns is-centered">
+          <div class="column has-text-centered">
+            <h1 class="title is-1 publication-title">Operational Space Control Barrier Functions</h1>
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">
+                <a href="https://stanfordasl.github.io/people/dan-morton/">Daniel Morton</a>,</span>
+              <span class="author-block">
+                <a href="https://stanfordasl.github.io/">Marco Pavone</a>
+              </span>
+            </div>
+
+            <div class="is-size-5 publication-authors">
+              <span class="author-block">Stanford University</span>
+            </div>
+
+            <div class="column has-text-centered">
+              <!-- <div class="publication-links"> -->
+                <!-- PDF Link. -->
+                <!-- <span class="link-block"> -->
+                  <!-- <a href="https://arxiv.org/pdf/2403.10768.pdf" -->
+                    <!-- class="external-link button is-normal is-rounded is-dark"> -->
+                    <!-- <span class="icon"> -->
+                      <!-- <i class="fas fa-file-pdf"></i> -->
+                    <!-- </span> -->
+                    <!-- <span>Paper</span> -->
+                  <!-- </a> -->
+                <!-- </span> -->
+                <!-- <span class="link-block"> -->
+                  <!-- <a href="https://arxiv.org/abs/2403.10768" class="external-link button is-normal is-rounded is-dark"> -->
+                    <!-- <span class="icon"> -->
+                      <!-- <i class="ai ai-arxiv"></i> -->
+                    <!-- </span> -->
+                    <!-- <span>arXiv</span> -->
+                  <!-- </a> -->
+                <!-- </span> -->
+                <!-- Video Link. -->
+                <!-- <span class="link-block"> -->
+                  <!-- <a href="https://www.youtube.com/watch?v=leHx4fbziKo" -->
+                    <!-- class="external-link button is-normal is-rounded is-dark"> -->
+                    <!-- <span class="icon"> -->
+                      <!-- <i class="fab fa-youtube"></i> -->
+                    <!-- </span> -->
+                    <!-- <span>Video</span> -->
+                  <!-- </a> -->
+                <!-- </span> -->
+                <!-- Code Link. -->
+                <!-- <span class="link-block"> -->
+                  <!-- <a href="https://github.com/StanfordASL/reachbot_manipulation" -->
+                    <!-- class="external-link button is-normal is-rounded is-dark"> -->
+                    <!-- <span class="icon"> -->
+                      <!-- <i class="fab fa-github"></i> -->
+                    <!-- </span> -->
+                    <!-- <span>Code</span> -->
+                  <!-- </a> -->
+                <!-- </span> -->
+              <!-- </div> -->
+
+            </div>
+          </div>
+        </div>
+      </div>
+    </div>
+  </section>
+
+
+  <section class="section">
+    <div class="container is-max-desktop">
+      <!-- Abstract. -->
+      <div class="columns is-centered has-text-centered">
+        <div class="column is-four-fifths">
+          <h2 class="title is-3">Abstract</h2>
+          <div class="content has-text-justified">
+            <p>
+              This site is currently under construction
+            </p>
+          </div>
+        </div>
+      </div>
+      <!--/ Abstract. -->
+
+
+  <section class="section" id="BibTeX">
+    <div class="container is-max-desktop content">
+      <h2 class="title">BibTeX</h2>
+      <pre><code>@article{MortonPavone2025,
+        author = {Morton, Daniel and Pavone, Marco},
+        title = {Operational Space Control Barrier Functions},
+        year = {2025},
+        journal = {2025 IEEE/RSJ International Conference on Intelligent Robots and Systems (IROS)},
+        note = {Submitted},
+      }</code></pre>
+    </div>
+  </section>
+
+
+  <footer class="footer">
+    <div class="container">
+      <div class="columns is-centered">
+        <div class="column">
+          <div class="content has-text-centered">
+            <p>
+              Website template borrowed from <a href="https://nerfies.github.io/">Nerfies</a>
+            </p>
+          </div>
+        </div>
+      </div>
+    </div>
+  </footer>
+
+</body>
+
+</html>
