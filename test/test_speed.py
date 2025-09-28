@@ -137,21 +137,77 @@ class EESafeSetTorqueConfig(OSCBFTorqueConfig):
     def alpha_2(self, h_2):
         return 10.0 * h_2
 
+@jax.tree_util.register_static
+class WBSafeSetTorqueConfig(OSCBFTorqueConfig):
+
+    def __init__(
+        self,
+        robot: Manipulator,
+        whole_body_pos_min: ArrayLike,
+        whole_body_pos_max: ArrayLike,
+    ):
+        self.whole_body_pos_min = np.asarray(whole_body_pos_min)
+        self.whole_body_pos_max = np.asarray(whole_body_pos_max)
+        super().__init__(robot)
+
+    def h_2(self, z, **kwargs):
+        # Extract values
+        q = z[: self.num_joints]
+
+        # Collision Avoidance
+        robot_collision_pos_rad = self.robot.link_collision_data(q)
+        robot_collision_positions = robot_collision_pos_rad[:, :3]
+        robot_collision_radii = robot_collision_pos_rad[:, 3, None]
+        robot_num_pts = robot_collision_positions.shape[0]
+
+        # Whole-body Set Containment
+        h_whole_body_upper = (
+            jnp.tile(self.whole_body_pos_max, (robot_num_pts, 1))
+            - robot_collision_positions
+            - robot_collision_radii
+        ).ravel()
+        h_whole_body_lower = (
+            robot_collision_positions
+            - jnp.tile(self.whole_body_pos_min, (robot_num_pts, 1))
+            - robot_collision_radii
+        ).ravel()
+
+        return jnp.concatenate(
+            [
+                h_whole_body_upper,
+                h_whole_body_lower,
+            ]
+        )
+
+    def alpha(self, h):
+        return 10.0 * h
+
+    def alpha_2(self, h_2):
+        return 10.0 * h_2
+
 
 # TODO clean this up alongside the velocity control test
 @jax.tree_util.register_static
 class OSCBFTorqueControlTest:
     """Test the speed of the manipulator demo, using randomly sampled states"""
 
-    def __init__(self):
+    def __init__(self, test_name = "ee_safe_set"):
         self.robot = load_panda()
-        ee_pos_min = np.array([0.15, -0.25, 0.25])
-        ee_pos_max = np.array([0.75, 0.25, 0.75])
-        self.config = EESafeSetTorqueConfig(self.robot, ee_pos_min, ee_pos_max)
-        self.cbf = CBF.from_config(self.config)
 
-        self.pos_min = self.config.pos_min
-        self.pos_max = self.config.pos_max
+        # Position ranges for sampling end effector states
+        self.pos_min = jnp.array([0.15, -0.25, 0.25])
+        self.pos_max = jnp.array([0.75, 0.25, 0.75])
+
+        if test_name == "ee_safe_set":
+            self.config = EESafeSetTorqueConfig(self.robot, self.pos_min, self.pos_max)
+        elif test_name == "wb_safe_set":
+            wb_pos_min = np.array([-0.5, -0.5, 0.0])
+            wb_pos_max = np.array([0.75, 0.5, 1.0])
+            self.config = WBSafeSetTorqueConfig(self.robot, wb_pos_min, wb_pos_max)
+        else:
+            raise ValueError("Unrecognized test name: ", test_name)
+
+        self.cbf = CBF.from_config(self.config)
 
         kp_pos = 50.0
         kp_rot = 20.0
@@ -256,11 +312,17 @@ class SpeedTest(unittest.TestCase):
 
     @classmethod
     def setUpClass(cls) -> None:
-        cls.manip_torque_test = OSCBFTorqueControlTest()
+        cls.ee_safe_set_torque_test = OSCBFTorqueControlTest("ee_safe_set")
+        cls.wb_collision_torque_test = OSCBFTorqueControlTest("wb_safe_set")
 
-    def test_manip_torque_control(self):
-        avg_hz = self.manip_torque_test.test_speed(verbose=False, plot=False)
-        print("Manipulator (torque control) average Hz: ", avg_hz)
+    def test_ee_safe_set(self):
+        avg_hz = self.ee_safe_set_torque_test.test_speed(verbose=False, plot=False)
+        print("EE safe set average Hz: ", avg_hz)
+        self.assertTrue(avg_hz >= 1000)
+
+    def test_wb_collisions(self):
+        avg_hz = self.wb_collision_torque_test.test_speed(verbose=False, plot=False)
+        print("WB collision avoidance average Hz: ", avg_hz)
         self.assertTrue(avg_hz >= 1000)
 
 
