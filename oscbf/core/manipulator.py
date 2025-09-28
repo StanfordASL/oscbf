@@ -246,6 +246,27 @@ class Manipulator:
             ]
         )
 
+        # Set up padded collision positions and radii for vmapping with static shape
+        if self.has_collision_data:
+            self.sphere_counts = tuple(len(rs) for rs in collision_radii)
+            max_spheres = max(self.sphere_counts)
+            padded_collision_positions = np.zeros((num_joints, max_spheres, 3))
+            padded_collision_radii = np.zeros((num_joints, max_spheres))
+            for link_idx in range(num_joints):
+                for sphere_idx in range(self.sphere_counts[link_idx]):
+                    padded_collision_positions[link_idx, sphere_idx] = collision_positions[link_idx][sphere_idx]
+                    padded_collision_radii[link_idx, sphere_idx] = collision_radii[link_idx][sphere_idx]
+            self.padded_collision_positions = tuplify(padded_collision_positions)
+            self.padded_collision_radii = tuplify(padded_collision_radii)
+            # mask: (num_joints, max_spheres) - True for non-padded spheres
+            sphere_mask = np.arange(max_spheres) < np.asarray(self.sphere_counts)[:, None]
+            self.sphere_slice_indices = tuplify(np.flatnonzero(sphere_mask.flatten()))
+        else:
+            self.sphere_counts = ()
+            self.padded_collision_positions = ()
+            self.padded_collision_radii = ()
+            self.sphere_slice_indices = ()
+
     @classmethod
     def from_urdf(
         cls,
@@ -496,21 +517,30 @@ class Manipulator:
         joint_transforms = self.joint_to_world_transforms(q)
         return self._link_collision_data(joint_transforms)
 
-    # TODO figure out a more efficient way to do this without the loop!!
     def _link_collision_data(self, joint_transforms: Array) -> Array:
         """Helper function: Compute the collision data for all links given the joint transforms"""
         if not self.has_collision_data:
             return jnp.array([])
-        pts = []
-        radii = []
-        for i in range(self.num_joints):
-            pts.append(
-                transform_points(joint_transforms[i], self.collision_positions[i])
-            )
-            radii.append(jnp.asarray(self.collision_radii[i]))
-        pts = jnp.vstack(pts)
-        radii = jnp.concatenate(radii).reshape(-1, 1)
-        return jnp.hstack([pts, radii])
+
+        # Convert static data to jax arrays
+        padded_collision_positions = jnp.asarray(self.padded_collision_positions)
+        padded_collision_radii = jnp.asarray(self.padded_collision_radii)
+        sphere_slice_indices = jnp.asarray(self.sphere_slice_indices)
+
+        # Compute collision body positions in world frame
+        transformed_pts_padded = jax.vmap(transform_points)(
+            joint_transforms, padded_collision_positions
+        )  # Shape (num_joints, max_spheres, 3)
+
+        # Flatten and select only the non-padded collision data
+        # Flat points shape (num_joints * max_spheres, 3),
+        # Flat radii shape (num_joints * max_spheres, 1)
+        all_pts_flat = transformed_pts_padded.reshape(-1, 3)
+        all_radii_flat = padded_collision_radii.reshape(-1, 1)
+        pts_unpadded = all_pts_flat[sphere_slice_indices]
+        radii_unpadded = all_radii_flat[sphere_slice_indices]
+
+        return jnp.hstack([pts_unpadded, radii_unpadded])
 
     def _get_linear_jacobians_transposed(self, joint_transforms: Array) -> Array:
         """Helper function: Compute an array containing the linear jacobians Jv for every link
