@@ -81,26 +81,6 @@ link_7_radii = (
     0.02,
 )
 
-# TODO: Get rid of these dictionaries and just use lists
-positions = {
-    "link_1": link_1_pos,
-    "link_2": link_2_pos,
-    "link_3": link_3_pos,
-    "link_4": link_4_pos,
-    "link_5": link_5_pos,
-    "link_6": link_6_pos,
-    "link_7": link_7_pos,
-}
-radii = {
-    "link_1": link_1_radii,
-    "link_2": link_2_radii,
-    "link_3": link_3_radii,
-    "link_4": link_4_radii,
-    "link_5": link_5_radii,
-    "link_6": link_6_radii,
-    "link_7": link_7_radii,
-}
-
 positions_list = (
     link_1_pos,
     link_2_pos,
@@ -121,3 +101,70 @@ radii_list = (
 )
 
 franka_collision_data = {"positions": positions_list, "radii": radii_list}
+
+##### Self collisions #####
+
+# Note: this is a very approximate model with only a small subset of the full geometry.
+# However, these few collision pairs are the most relevant for the Franka, and
+# tabletop-like tasks in a standard configuration
+
+link_1_pos_sc = ((0.0, -0.05, 0.0),)  # 0
+link_1_radii_sc = (0.085,)
+
+link_2_pos_sc = ((0, 0, 0.05),)  # 1
+link_2_radii_sc = (0.085,)
+
+link_3_pos_sc = ()
+link_3_radii_sc = ()
+
+link_4_pos_sc = ()
+link_4_radii_sc = ()
+
+link_5_pos_sc = (
+    (0, 0, -0.23),  # 2
+    (0, 0.09, -0.075), # 3
+    (0, 0.08, 0),  # 4
+)
+link_5_radii_sc = (
+    0.08,
+    0.04,
+    0.065,
+)
+
+link_6_pos_sc = ()
+link_6_radii_sc = ()
+
+link_7_pos_sc = ((0, 0, 0.12),)  # 5
+link_7_radii_sc = (0.12,)
+
+positions_list_sc = (
+    link_1_pos_sc,
+    link_2_pos_sc,
+    link_3_pos_sc,
+    link_4_pos_sc,
+    link_5_pos_sc,
+    link_6_pos_sc,
+    link_7_pos_sc,
+)
+radii_list_sc = (
+    link_1_radii_sc,
+    link_2_radii_sc,
+    link_3_radii_sc,
+    link_4_radii_sc,
+    link_5_radii_sc,
+    link_6_radii_sc,
+    link_7_radii_sc,
+)
+pairs_sc = (
+    (0, 3),
+    (0, 4),
+    (0, 5),
+    (1, 5),
+    (2, 5),
+)
+
+franka_self_collision_data = {
+    "positions": positions_list_sc,
+    "radii": radii_list_sc,
+    "pairs": pairs_sc,
+}

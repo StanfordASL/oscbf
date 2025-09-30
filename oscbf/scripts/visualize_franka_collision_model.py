@@ -16,7 +16,7 @@ FRANKA_INIT_QPOS = np.array(
 RANDOMIZE = False
 
 
-def main():
+def visualize_collision_model(positions, radii, pairs=None):
     pybullet.connect(pybullet.GUI)
     robot = pybullet.loadURDF(
         URDF,
@@ -40,23 +40,34 @@ def main():
     joint_transforms = manipulator.joint_to_world_transforms(q)
 
     sphere_ids = []
+    sphere_positions = []
     # Determine the world-frame positions of the collision geometry
     for i in range(manipulator.num_joints):
-        link_name = f"link_{i+1}"
         parent_to_world_tf = joint_transforms[i]
-        num_collision_spheres = len(colmodel.positions[link_name])
+        num_collision_spheres = len(positions[i])
         for j in range(num_collision_spheres):
-            collision_to_parent_tf = create_transform_numpy(
-                np.eye(3), colmodel.positions[link_name][j]
-            )
+            collision_to_parent_tf = create_transform_numpy(np.eye(3), positions[i][j])
             collision_to_world_tf = parent_to_world_tf @ collision_to_parent_tf
-            sphere_ids.append(
-                visualize_3D_sphere(
-                    collision_to_world_tf[:3, 3], colmodel.radii[link_name][j]
-                )
-            )
+            world_pos = collision_to_world_tf[:3, 3]
+            sphere_ids.append(visualize_3D_sphere(world_pos, radii[i][j]))
+            sphere_positions.append(world_pos)
+
+    if pairs is not None:
+        for pair in pairs:
+            i, j = pair
+            rgb = (1, 0, 0)
+            pybullet.addUserDebugLine(sphere_positions[i], sphere_positions[j], rgb)
 
     input("Press Enter to exit")
+
+
+def main(self_collision=False):
+    if self_collision:
+        visualize_collision_model(
+            colmodel.positions_list_sc, colmodel.radii_list_sc, colmodel.pairs_sc
+        )
+    else:
+        visualize_collision_model(colmodel.positions_list, colmodel.radii_list)
 
 
 if __name__ == "__main__":

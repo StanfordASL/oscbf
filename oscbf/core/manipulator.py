@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from oscbf.utils.urdf_parser import parse_urdf
-from oscbf.core.franka_collision_model import franka_collision_data
+from oscbf.core.franka_collision_model import franka_collision_data, franka_self_collision_data
 
 
 def tuplify(arr):
@@ -185,6 +185,9 @@ class Manipulator:
         ee_offset: tuple,
         collision_positions: tuple,
         collision_radii: tuple,
+        self_collision_positions: tuple,
+        self_collision_radii: tuple,
+        self_collision_pairs: tuple,
     ):
         # fmt: off
         assert isinstance(num_joints, int)
@@ -205,6 +208,9 @@ class Manipulator:
         assert isinstance(ee_offset, tuple) and len(ee_offset) == 4  # Transformation matrix
         assert isinstance(collision_positions, tuple)
         assert isinstance(collision_radii, tuple)
+        assert isinstance(self_collision_positions, tuple)
+        assert isinstance(self_collision_radii, tuple)
+        assert isinstance(self_collision_pairs, tuple)
         # fmt: on
 
         self.num_joints = num_joints
@@ -226,9 +232,13 @@ class Manipulator:
         self.ee_offset = ee_offset
         self.collision_positions = collision_positions
         self.collision_radii = collision_radii
+        self.self_collision_positions = self_collision_positions
+        self.self_collision_radii = self_collision_radii
+        self.self_collision_pairs = self_collision_pairs
         # self.num_collision_pts_per_link = tuple(len(pos) for pos in collision_positions)
         # self.num_collision_points = sum(self.num_collision_pts_per_link)
         self.has_collision_data = len(collision_positions) > 0
+        self.has_self_collision_data = len(self_collision_positions) > 0
         self.joint_to_prev_joint_tfs = tuplify(
             [
                 create_transform_numpy(rot, trans)
@@ -245,27 +255,12 @@ class Manipulator:
                 )
             ]
         )
-
         # Set up padded collision positions and radii for vmapping with static shape
-        if self.has_collision_data:
-            self.sphere_counts = tuple(len(rs) for rs in collision_radii)
-            max_spheres = max(self.sphere_counts)
-            padded_collision_positions = np.zeros((num_joints, max_spheres, 3))
-            padded_collision_radii = np.zeros((num_joints, max_spheres))
-            for link_idx in range(num_joints):
-                for sphere_idx in range(self.sphere_counts[link_idx]):
-                    padded_collision_positions[link_idx, sphere_idx] = collision_positions[link_idx][sphere_idx]
-                    padded_collision_radii[link_idx, sphere_idx] = collision_radii[link_idx][sphere_idx]
-            self.padded_collision_positions = tuplify(padded_collision_positions)
-            self.padded_collision_radii = tuplify(padded_collision_radii)
-            # mask: (num_joints, max_spheres) - True for non-padded spheres
-            sphere_mask = np.arange(max_spheres) < np.asarray(self.sphere_counts)[:, None]
-            self.sphere_slice_indices = tuplify(np.flatnonzero(sphere_mask.flatten()))
-        else:
-            self.sphere_counts = ()
-            self.padded_collision_positions = ()
-            self.padded_collision_radii = ()
-            self.sphere_slice_indices = ()
+        (
+            self.padded_collision_positions,
+            self.padded_collision_radii,
+            self.collision_slice_indices,
+        ) = self._process_collision_data(collision_positions, collision_radii)
 
     @classmethod
     def from_urdf(
@@ -273,6 +268,7 @@ class Manipulator:
         urdf_filename: str,
         ee_offset: Optional[ArrayLike] = None,
         collision_data: Optional[dict] = None,
+        self_collision_data: Optional[dict] = None,
     ) -> "Manipulator":
         """Construct a Manipulator object from a parsed URDF file
 
@@ -287,6 +283,10 @@ class Manipulator:
             collision_data (dict, optional): Collision geometry for each link, stored as a dictionary
                 where data["positions"] => list of sphere center points in each link frame, and
                 data["radii"] => list of sphere radii for each body. Defaults to None.
+            self_collision_data (dict, optional): Self collision geometry for each link, stored as a dictionary
+                where data["positions"] => list of sphere center points in each link frame,
+                data["radii"] => list of sphere radii for each body, and
+                data["pairs"] => list of pairs of collision sphere indices to consider. Defaults to None.
 
         Returns:
             Manipulator: The manipulator object constructed from the URDF
@@ -302,6 +302,16 @@ class Manipulator:
         else:
             collision_positions = ()
             collision_radii = ()
+
+        assert isinstance(self_collision_data, dict) or self_collision_data is None
+        if isinstance(self_collision_data, dict):
+            self_collision_positions = self_collision_data["positions"]
+            self_collision_radii = self_collision_data["radii"]
+            self_collision_pairs = self_collision_data["pairs"]
+        else:
+            self_collision_positions = ()
+            self_collision_radii = ()
+            self_collision_pairs = ()
 
         if ee_offset is None:
             ee_offset = tuplify(np.eye(4))
@@ -330,7 +340,48 @@ class Manipulator:
             ee_offset=ee_offset,
             collision_positions=collision_positions,
             collision_radii=collision_radii,
+            self_collision_positions=self_collision_positions,
+            self_collision_radii=self_collision_radii,
+            self_collision_pairs=self_collision_pairs,
         )
+
+    def _process_collision_data(self, positions: tuple, radii: tuple) -> Tuple[tuple, tuple, tuple]:
+        """Helper function: Sets up a padded representation of the collision sphere positions and
+        radii for vmapping with uniform shape
+
+        This should only be called once upon initialization
+
+        Args:
+            positions (tuple): Collision sphere locations for each link. Tuple of len (num_links)
+                where each entry contains a set of points (length 3) for that link
+            radii (tuple): Collision sphere radii for each link. Tuple of len (num_links)
+                where each entry contains a set of radii for that link
+
+        Returns:
+            Tuple[tuple, tuple, tuple]:
+                padded_positions: Positions, shape (num_joints, max_spheres_per_link, 3)
+                padded_radii: Radii, shape (num_joints, max_spheres_per_link)
+                slice_indices: Indices of the *flattened* padded position and radii to select,
+                    corresponding to the non-padded data
+        """
+        assert isinstance(positions, tuple)
+        assert isinstance(radii, tuple)
+        if len(positions) == 0 or len(radii) == 0:
+            return (), (), ()
+        sphere_counts = tuple(len(rs) for rs in radii)
+        max_spheres_per_link = max(sphere_counts)
+        padded_positions = np.zeros((self.num_joints, max_spheres_per_link, 3))
+        padded_radii = np.zeros((self.num_joints, max_spheres_per_link))
+        for link_idx in range(self.num_joints):
+            for sphere_idx in range(sphere_counts[link_idx]):
+                padded_positions[link_idx, sphere_idx] = positions[link_idx][sphere_idx]
+                padded_radii[link_idx, sphere_idx] = radii[link_idx][sphere_idx]
+        padded_positions = tuplify(padded_positions)
+        padded_radii = tuplify(padded_radii)
+        # mask: (num_joints, max_spheres) - True for non-padded spheres
+        sphere_mask = np.arange(max_spheres_per_link) < np.asarray(sphere_counts)[:, None]
+        slice_indices = tuplify(np.flatnonzero(sphere_mask.flatten()))
+        return padded_positions, padded_radii, slice_indices
 
     def joint_to_world_transforms(self, q: Array) -> Array:
         """Computes the transformation matrices for all joints (Joint frame --> world frame)
@@ -525,7 +576,7 @@ class Manipulator:
         # Convert static data to jax arrays
         padded_collision_positions = jnp.asarray(self.padded_collision_positions)
         padded_collision_radii = jnp.asarray(self.padded_collision_radii)
-        sphere_slice_indices = jnp.asarray(self.sphere_slice_indices)
+        collision_slice_indices = jnp.asarray(self.collision_slice_indices)
 
         # Compute collision body positions in world frame
         transformed_pts_padded = jax.vmap(transform_points)(
@@ -537,10 +588,46 @@ class Manipulator:
         # Flat radii shape (num_joints * max_spheres, 1)
         all_pts_flat = transformed_pts_padded.reshape(-1, 3)
         all_radii_flat = padded_collision_radii.reshape(-1, 1)
-        pts_unpadded = all_pts_flat[sphere_slice_indices]
-        radii_unpadded = all_radii_flat[sphere_slice_indices]
+        pts_unpadded = all_pts_flat[collision_slice_indices]
+        radii_unpadded = all_radii_flat[collision_slice_indices]
 
         return jnp.hstack([pts_unpadded, radii_unpadded])
+
+    @jax.jit
+    def link_self_collision_data(self, q: Array) -> Array:
+        """Compute collision data for all links given the joint configuration
+
+        Collision data includes the positions of all collision points (in world frame)
+        and their radii, stacked together in an array
+
+        Args:
+            q (Array): Joint positions, shape (num_joints,)
+
+        Returns:
+            Array: Collision data, shape (num_collision_points, 4)
+                The first three columns are the xyz world-frame positions of the collision points,
+                and the fourth column is the radii
+        """
+        joint_transforms = self.joint_to_world_transforms(q)
+        return self._link_self_collision_data(joint_transforms)
+
+    # TODO: use vmap
+    def _link_self_collision_data(self, joint_transforms: Array) -> Array:
+        """Helper function: Compute the self collision data for all links given the joint transforms"""
+        if not self.has_self_collision_data:
+            return jnp.array([])
+
+        pts = []
+        radii = []
+        for i in range(self.num_joints):
+            if len(self.self_collision_positions[i]) > 0:
+                pts.append(
+                    transform_points(joint_transforms[i], jnp.asarray(self.self_collision_positions[i]))
+                )
+                radii.append(jnp.asarray(self.self_collision_radii[i]))
+        pts = jnp.vstack(pts)
+        radii = jnp.concatenate(radii).reshape(-1, 1)
+        return jnp.hstack([pts, radii])
 
     def _get_linear_jacobians_transposed(self, joint_transforms: Array) -> Array:
         """Helper function: Compute an array containing the linear jacobians Jv for every link
@@ -788,6 +875,7 @@ def load_panda() -> Manipulator:
             ]
         ),
         collision_data=franka_collision_data,
+        self_collision_data=franka_self_collision_data,
     )
 
 
