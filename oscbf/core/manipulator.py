@@ -10,6 +10,7 @@ import numpy as np
 
 from oscbf.utils.urdf_parser import parse_urdf
 from oscbf.core.franka_collision_model import franka_collision_data, franka_self_collision_data
+from oscbf.utils.general_utils import find_assets_dir
 
 
 def tuplify(arr):
@@ -867,7 +868,7 @@ def load_panda() -> Manipulator:
     """Create a Manipulator object for the Franka Panda"""
 
     return Manipulator.from_urdf(
-        "oscbf/assets/franka_panda/panda.urdf",
+        find_assets_dir() + "franka_panda/panda.urdf",
         ee_offset=np.block(
             [
                 [np.eye(3), np.reshape(np.array([0.0, 0.0, 0.216]), (-1, 1))],
