@@ -12,12 +12,12 @@ keywords = ["control", "barrier", "function", "CBF", "Jax", "operational", "spac
 # TODO: Have a better way of managing these dependencies
 # There was a slowdown introduced in jax 0.4.32
 dependencies = [
-    "numpy<2", # Pybullet has trouble with numpy 2.0
+    "numpy", 
     "jax==0.4.30",
     "jaxlib==0.4.30",
     "cbfpy",
     "qpax",
-    "pybullet",
+    "pybullet>=3.2.7", # Pybullet < 3.2.7 has trouble with numpy 2.0
     "matplotlib",
     # Dependencies from urdfpy... I should try to remove some of these
     "networkx",
