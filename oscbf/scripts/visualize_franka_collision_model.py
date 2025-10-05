@@ -16,7 +16,14 @@ FRANKA_INIT_QPOS = np.array(
 RANDOMIZE = False
 
 
-def visualize_collision_model(positions, radii, pairs=None):
+def visualize_collision_model(
+    positions,
+    radii,
+    pairs=None,
+    base_position=None,
+    base_radius=None,
+    base_sc_idxs=None,
+):
     pybullet.connect(pybullet.GUI)
     robot = pybullet.loadURDF(
         URDF,
@@ -28,6 +35,7 @@ def visualize_collision_model(positions, radii, pairs=None):
     manipulator = load_panda()
     for link_idx in range(manipulator.num_joints):
         pybullet.changeVisualShape(robot, link_idx, rgbaColor=(0, 0, 0, 0.5))
+    pybullet.changeVisualShape(robot, -1, rgbaColor=(0, 0, 0, 0.5))
 
     # input("Press Enter to randomize the joints")
     if RANDOMIZE:
@@ -58,13 +66,26 @@ def visualize_collision_model(positions, radii, pairs=None):
             rgb = (1, 0, 0)
             pybullet.addUserDebugLine(sphere_positions[i], sphere_positions[j], rgb)
 
+    if base_position is not None:
+        visualize_3D_sphere(base_position, base_radius)
+
+    if base_sc_idxs is not None:
+        for idx in base_sc_idxs:
+            rgb = (1, 0, 0)
+            pybullet.addUserDebugLine(base_position, sphere_positions[idx], rgb)
+
     input("Press Enter to exit")
 
 
 def main(self_collision=False):
     if self_collision:
         visualize_collision_model(
-            colmodel.positions_list_sc, colmodel.radii_list_sc, colmodel.pairs_sc
+            colmodel.positions_list_sc,
+            colmodel.radii_list_sc,
+            colmodel.pairs_sc,
+            colmodel.base_position,
+            colmodel.base_radius,
+            colmodel.base_sc_idxs,
         )
     else:
         visualize_collision_model(colmodel.positions_list, colmodel.radii_list)

@@ -9,8 +9,12 @@ import jax.numpy as jnp
 import numpy as np
 
 from oscbf.utils.urdf_parser import parse_urdf
-from oscbf.core.franka_collision_model import franka_collision_data, franka_self_collision_data
 from oscbf.utils.general_utils import find_assets_dir
+from oscbf.core.franka_collision_model import (
+    franka_collision_data,
+    franka_self_collision_data,
+    base_self_collision_data,
+)
 
 
 def tuplify(arr):
@@ -189,6 +193,9 @@ class Manipulator:
         self_collision_positions: tuple,
         self_collision_radii: tuple,
         self_collision_pairs: tuple,
+        base_self_collision_position: tuple,
+        base_self_collision_radius: float,
+        base_self_collision_idxs: tuple,
     ):
         # fmt: off
         assert isinstance(num_joints, int)
@@ -212,6 +219,10 @@ class Manipulator:
         assert isinstance(self_collision_positions, tuple)
         assert isinstance(self_collision_radii, tuple)
         assert isinstance(self_collision_pairs, tuple)
+        # TODO allow for more complicated base collision geometries
+        assert isinstance(base_self_collision_position, tuple)
+        assert isinstance(base_self_collision_radius, float)
+        assert isinstance(base_self_collision_idxs, tuple)
         # fmt: on
 
         self.num_joints = num_joints
@@ -236,6 +247,9 @@ class Manipulator:
         self.self_collision_positions = self_collision_positions
         self.self_collision_radii = self_collision_radii
         self.self_collision_pairs = self_collision_pairs
+        self.base_self_collision_position = base_self_collision_position
+        self.base_self_collision_radius = base_self_collision_radius
+        self.base_self_collision_idxs = base_self_collision_idxs
         # self.num_collision_pts_per_link = tuple(len(pos) for pos in collision_positions)
         # self.num_collision_points = sum(self.num_collision_pts_per_link)
         self.has_collision_data = len(collision_positions) > 0
@@ -270,6 +284,7 @@ class Manipulator:
         ee_offset: Optional[ArrayLike] = None,
         collision_data: Optional[dict] = None,
         self_collision_data: Optional[dict] = None,
+        base_self_collision_data: Optional[dict] = None,
     ) -> "Manipulator":
         """Construct a Manipulator object from a parsed URDF file
 
@@ -288,6 +303,10 @@ class Manipulator:
                 where data["positions"] => list of sphere center points in each link frame,
                 data["radii"] => list of sphere radii for each body, and
                 data["pairs"] => list of pairs of collision sphere indices to consider. Defaults to None.
+            base_self_collision_data (dict, optional): Self collision geometry for the base, stored as a dictionary
+                where data["position"] => sphere center point for base sphere,
+                data["radius"] => radius of base sphere, and
+                data["indices"] => indices of spheres in the self collision model to pair with the base. Defaults to None.
 
         Returns:
             Manipulator: The manipulator object constructed from the URDF
@@ -313,6 +332,16 @@ class Manipulator:
             self_collision_positions = ()
             self_collision_radii = ()
             self_collision_pairs = ()
+
+        assert isinstance(base_self_collision_data, dict) or base_self_collision_data is None
+        if isinstance(base_self_collision_data, dict):
+            base_self_collision_position = base_self_collision_data["position"]
+            base_self_collision_radius = base_self_collision_data["radius"]
+            base_self_collision_idxs = base_self_collision_data["indices"]
+        else:
+            base_self_collision_position = ()
+            base_self_collision_radius = 0.0  # minor hack: expects float
+            base_self_collision_idxs = ()
 
         if ee_offset is None:
             ee_offset = tuplify(np.eye(4))
@@ -344,6 +373,9 @@ class Manipulator:
             self_collision_positions=self_collision_positions,
             self_collision_radii=self_collision_radii,
             self_collision_pairs=self_collision_pairs,
+            base_self_collision_position=base_self_collision_position,
+            base_self_collision_radius=base_self_collision_radius,
+            base_self_collision_idxs=base_self_collision_idxs
         )
 
     def _process_collision_data(self, positions: tuple, radii: tuple) -> Tuple[tuple, tuple, tuple]:
@@ -877,6 +909,7 @@ def load_panda() -> Manipulator:
         ),
         collision_data=franka_collision_data,
         self_collision_data=franka_self_collision_data,
+        base_self_collision_data=base_self_collision_data,
     )
 
 

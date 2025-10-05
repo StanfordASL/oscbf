@@ -37,7 +37,18 @@ class SelfCollisionConfig(OSCBFTorqueConfig):
         rad_a = robot_collision_radii[pairs[:, 0]]
         rad_b = robot_collision_radii[pairs[:, 1]]
         center_deltas = pos_b - pos_a
-        h_self_collision = jnp.linalg.norm(center_deltas, axis=1) - rad_a - rad_b
+        h_self_collision = jnp.linalg.norm(center_deltas, axis=-1) - rad_a - rad_b
+
+        # Base self collision avoidance
+        base_position = jnp.asarray(self.robot.base_self_collision_position)
+        base_radius = self.robot.base_self_collision_radius
+        base_sc_idxs = jnp.asarray(self.robot.base_self_collision_idxs)
+        base_sc_deltas = robot_collision_positions[base_sc_idxs] - base_position
+        h_base_self_collision = (
+            jnp.linalg.norm(base_sc_deltas, axis=-1)
+            - robot_collision_radii[base_sc_idxs]
+            - base_radius
+        )
 
         # Joint Limit Avoidance
         q_min = jnp.asarray(self.q_min)
@@ -48,7 +59,7 @@ class SelfCollisionConfig(OSCBFTorqueConfig):
         sigmas = jax.lax.linalg.svd(self.robot.ee_jacobian(q), compute_uv=False)
         h_singularity = jnp.array([jnp.prod(sigmas) - self.singularity_tol])
 
-        return jnp.concatenate([h_self_collision, h_joint_limits, h_singularity])
+        return jnp.concatenate([h_self_collision, h_base_self_collision, h_joint_limits, h_singularity])
 
     def alpha(self, h):
         return 10.0 * h
