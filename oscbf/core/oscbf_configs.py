@@ -35,6 +35,8 @@ class OSCBFTorqueConfig(CBFConfig):
             impact on the joint space tracking performance. Defaults to 1.0.
         compensate_centrifugal_coriolis (bool, optional): Whether to compensate for centrifugal/coriolis
             terms in the robot dynamics. This term is often neglected (set to False). Defaults to True.
+        init_args (tuple, optional): Optional initial seed for testing additional CBFpy barrier arguments.
+            Defaults to ().
     """
 
     def __init__(
@@ -44,6 +46,7 @@ class OSCBFTorqueConfig(CBFConfig):
         rot_obj_weight: float = 1.0,
         joint_obj_weight: float = 1.0,
         compensate_centrifugal_coriolis: bool = True,
+        init_args: tuple = (),
     ):
         assert isinstance(robot, Manipulator)
         assert isinstance(pos_obj_weight, (tuple, float)) and pos_obj_weight >= 0
@@ -72,9 +75,10 @@ class OSCBFTorqueConfig(CBFConfig):
             m=self.num_joints,
             u_min=-np.asarray(robot.joint_max_forces),
             u_max=np.asarray(robot.joint_max_forces),
+            init_args=init_args,
         )
 
-    def f(self, z, **kwargs):
+    def f(self, z, *args, **kwargs):
         q = z[: self.num_joints]
         q_dot = z[self.num_joints : self.num_joints * 2]
         M = self.robot.mass_matrix(q)
@@ -89,7 +93,7 @@ class OSCBFTorqueConfig(CBFConfig):
             ]
         )
 
-    def g(self, z, **kwargs):
+    def g(self, z, *args, **kwargs):
         q = z[: self.num_joints]
         M = self.robot.mass_matrix(q)
         M_inv = jnp.linalg.inv(M)
@@ -100,7 +104,7 @@ class OSCBFTorqueConfig(CBFConfig):
             ]
         )
 
-    def _P(self, z):
+    def _P(self, z, *args, **kwargs):
         """Helper function to compute the QP P matrix. This get reused in both the P and q QP functions"""
         q = z[: self.num_joints]
         transforms = self.robot.joint_to_world_transforms(q)
@@ -120,10 +124,10 @@ class OSCBFTorqueConfig(CBFConfig):
             + M_inv.T @ J.T @ W_T_W_task @ J @ M_inv
         )
 
-    def P(self, z, u_des):
+    def P(self, z, u_des, *args, **kwargs):
         return self._P(z)
 
-    def q(self, z, u_des):
+    def q(self, z, u_des, *args, **kwargs):
         return -u_des.T @ self._P(z)
 
 
@@ -141,6 +145,8 @@ class OSCBFVelocityConfig(CBFConfig):
             impact on the end-effector's orientation tracking performance. Defaults to 1.0.
         joint_obj_weight (float, optional): Objective function weight for the safety filter's
             impact on the joint space tracking performance. Defaults to 1.0.
+        init_args (tuple, optional): Optional initial seed for testing additional CBFpy barrier arguments.
+            Defaults to ().
     """
 
     def __init__(
@@ -149,6 +155,7 @@ class OSCBFVelocityConfig(CBFConfig):
         pos_obj_weight: float = 1.0,
         rot_obj_weight: float = 1.0,
         joint_obj_weight: float = 1.0,
+        init_args: tuple = (),
     ):
         assert isinstance(robot, Manipulator)
         assert isinstance(pos_obj_weight, (tuple, float)) and pos_obj_weight >= 0
@@ -176,15 +183,16 @@ class OSCBFVelocityConfig(CBFConfig):
             m=self.num_joints,
             u_min=-np.asarray(robot.joint_max_velocities),
             u_max=np.asarray(robot.joint_max_velocities),
+            init_args=init_args,
         )
 
-    def f(self, z, **kwargs):
+    def f(self, z, *args, **kwargs):
         return jnp.zeros(self.n)
 
-    def g(self, z, **kwargs):
+    def g(self, z, *args, **kwargs):
         return jnp.eye(self.num_joints)
 
-    def _P(self, z):
+    def _P(self, z, *args, **kwargs):
         q = z
         transforms = self.robot.joint_to_world_transforms(q)
         J = self.robot._ee_jacobian(transforms)
@@ -200,8 +208,8 @@ class OSCBFVelocityConfig(CBFConfig):
 
         return N.T @ W_T_W_joint @ N + J.T @ W_T_W_task @ J
 
-    def P(self, z, u_des, **kwargs):
+    def P(self, z, u_des, *args, **kwargs):
         return self._P(z)
 
-    def q(self, z, u_des, **kwargs):
+    def q(self, z, u_des, *args, **kwargs):
         return -u_des.T @ self._P(z)
