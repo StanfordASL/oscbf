@@ -15,7 +15,7 @@ dependencies = [
     "numpy", 
     "jax==0.4.30",
     "jaxlib==0.4.30",
-    "cbfpy",
+    "cbfpy==0.0.1",
     "qpax",
     "pybullet>=3.2.7", # Pybullet < 3.2.7 has trouble with numpy 2.0
     "matplotlib",
