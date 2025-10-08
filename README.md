@@ -62,6 +62,11 @@ This has been tested on Python 3.10 and 3.11, on Ubuntu 22.04.
 See the CBFpy documentation, available at [this link](https://danielpmorton.github.io/cbfpy)
 
 
+## Hardware / ROS2 
+
+The code used to run the Franka Panda hardware experiments is available at [this link](https://github.com/StanfordASL/oscbf_hardware_ws)
+
+
 ## Citation
 ```
 @article{morton2025oscbf,
