@@ -1,3 +1,3 @@
 # Operational Space Control Barrier Functions
 
-The code for this paper (built on top of [CBFpy](https://github.com/danielpmorton/cbfpy)) will be released soon   
+This is the Github Pages branch. Check out the `main` branch for the OSCBF implementation and examples.
