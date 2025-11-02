@@ -16,7 +16,7 @@ from pybullet_utils.bullet_client import BulletClient
 
 from oscbf.core.manipulator import Manipulator, load_panda
 from oscbf.utils.visualization import visualize_3D_box
-from oscbf.utils.general_utils import stdout_redirected
+from oscbf.utils.general_utils import stdout_redirected, find_assets_dir
 from oscbf.core.controllers import PoseTaskVelocityController, PoseTaskTorqueController
 from oscbf.utils.trajectory import TaskTrajectory
 
@@ -111,7 +111,7 @@ class ManipulationEnv:
             forces=[0.1] * self.num_joints,
         )
         self.target = self.client.loadURDF(
-            "oscbf/assets/point_robot.urdf",
+            find_assets_dir() + "point_robot.urdf",
             basePosition=target_pos,
             # baseOrientation=self.client.getQuaternionFromEuler([np.pi, 0, 0]),
             globalScaling=0.2,
