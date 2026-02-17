@@ -14,8 +14,9 @@ import pybullet
 import numpy as np
 
 from oscbf.core.manipulator import Manipulator
+from oscbf.assets import ASSETS_DIR
 
-URDF = "oscbf/assets/franka_panda/panda.urdf"
+URDF = str(ASSETS_DIR / "franka_panda/panda.urdf")
 FRANKA_INIT_QPOS = np.array(
     [0.0, -np.pi / 6, 0.0, -3 * np.pi / 4, 0.0, 5 * np.pi / 9, 0.0]
 )

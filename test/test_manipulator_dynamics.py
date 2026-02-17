@@ -3,7 +3,7 @@
 import unittest
 
 from oscbf.core.manipulator import Manipulator
-from oscbf.utils.general_utils import find_assets_dir
+from oscbf.assets import ASSETS_DIR
 
 import pybullet
 import jax.numpy as jnp
@@ -16,7 +16,7 @@ try:
 except ImportError:
     PIN_INSTALLED = False
 
-URDF = find_assets_dir() + "franka_panda/panda.urdf"
+URDF = str(ASSETS_DIR / "franka_panda/panda.urdf")
 
 
 class PinocchioDynamicsTest(unittest.TestCase):

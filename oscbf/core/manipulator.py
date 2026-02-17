@@ -9,7 +9,7 @@ import jax.numpy as jnp
 import numpy as np
 
 from oscbf.utils.urdf_parser import parse_urdf
-from oscbf.utils.general_utils import find_assets_dir
+from oscbf.assets import ASSETS_DIR
 from oscbf.core.franka_collision_model import (
     franka_collision_data,
     franka_self_collision_data,
@@ -333,7 +333,10 @@ class Manipulator:
             self_collision_radii = ()
             self_collision_pairs = ()
 
-        assert isinstance(base_self_collision_data, dict) or base_self_collision_data is None
+        assert (
+            isinstance(base_self_collision_data, dict)
+            or base_self_collision_data is None
+        )
         if isinstance(base_self_collision_data, dict):
             base_self_collision_position = base_self_collision_data["position"]
             base_self_collision_radius = base_self_collision_data["radius"]
@@ -375,10 +378,12 @@ class Manipulator:
             self_collision_pairs=self_collision_pairs,
             base_self_collision_position=base_self_collision_position,
             base_self_collision_radius=base_self_collision_radius,
-            base_self_collision_idxs=base_self_collision_idxs
+            base_self_collision_idxs=base_self_collision_idxs,
         )
 
-    def _process_collision_data(self, positions: tuple, radii: tuple) -> Tuple[tuple, tuple, tuple]:
+    def _process_collision_data(
+        self, positions: tuple, radii: tuple
+    ) -> Tuple[tuple, tuple, tuple]:
         """Helper function: Sets up a padded representation of the collision sphere positions and
         radii for vmapping with uniform shape
 
@@ -412,7 +417,9 @@ class Manipulator:
         padded_positions = tuplify(padded_positions)
         padded_radii = tuplify(padded_radii)
         # mask: (num_joints, max_spheres) - True for non-padded spheres
-        sphere_mask = np.arange(max_spheres_per_link) < np.asarray(sphere_counts)[:, None]
+        sphere_mask = (
+            np.arange(max_spheres_per_link) < np.asarray(sphere_counts)[:, None]
+        )
         slice_indices = tuplify(np.flatnonzero(sphere_mask.flatten()))
         return padded_positions, padded_radii, slice_indices
 
@@ -655,7 +662,10 @@ class Manipulator:
         for i in range(self.num_joints):
             if len(self.self_collision_positions[i]) > 0:
                 pts.append(
-                    transform_points(joint_transforms[i], jnp.asarray(self.self_collision_positions[i]))
+                    transform_points(
+                        joint_transforms[i],
+                        jnp.asarray(self.self_collision_positions[i]),
+                    )
                 )
                 radii.append(jnp.asarray(self.self_collision_radii[i]))
         pts = jnp.vstack(pts)
@@ -900,7 +910,7 @@ def load_panda() -> Manipulator:
     """Create a Manipulator object for the Franka Panda"""
 
     return Manipulator.from_urdf(
-        find_assets_dir() + "franka_panda/panda.urdf",
+        str(ASSETS_DIR / "franka_panda/panda.urdf"),
         ee_offset=np.block(
             [
                 [np.eye(3), np.reshape(np.array([0.0, 0.0, 0.216]), (-1, 1))],

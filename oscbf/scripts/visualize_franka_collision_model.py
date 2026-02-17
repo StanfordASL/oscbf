@@ -6,10 +6,11 @@ import numpy as np
 import oscbf.core.franka_collision_model as colmodel
 from oscbf.core.manipulator import create_transform_numpy, load_panda
 from oscbf.utils.visualization import visualize_3D_sphere
+from oscbf.assets import ASSETS_DIR
 
 np.random.seed(0)
 
-URDF = "oscbf/assets/franka_panda/panda.urdf"
+URDF = str(ASSETS_DIR / "franka_panda/panda.urdf")
 FRANKA_INIT_QPOS = np.array(
     [0.0, -np.pi / 6, 0.0, -3 * np.pi / 4, 0.0, 5 * np.pi / 9, 0.0]
 )
